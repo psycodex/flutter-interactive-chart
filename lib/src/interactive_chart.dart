@@ -1,15 +1,27 @@
+import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter/gestures.dart';
-import 'package:flutter/widgets.dart';
-import 'package:intl/intl.dart' as intl;
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'candle_data.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:interactive_chart/src/indicators/moving_average.dart';
+import 'package:interactive_chart/src/ui/top_tool_window.dart';
+
+import 'constants.dart';
+import 'ui/bottom_tool_window.dart';
+import 'entity/candle_data.dart';
 import 'chart_painter.dart';
 import 'chart_style.dart';
+import 'indicators/indicators.dart';
 import 'painter_params.dart';
+import 'ui/info_widget.dart';
+import 'util/number_util.dart';
 
 class InteractiveChart extends StatefulWidget {
+  final String title;
+
   /// The full list of [CandleData] to be used for this chart.
   ///
   /// It needs to have at least 3 data points. If data is sufficiently large,
@@ -60,8 +72,9 @@ class InteractiveChart extends StatefulWidget {
   /// This provides the width of a candlestick at the current zoom level.
   final ValueChanged<double>? onCandleResize;
 
-  const InteractiveChart({
+  InteractiveChart({
     Key? key,
+    required this.title,
     required this.candles,
     this.initialVisibleCandleCount = 90,
     ChartStyle? style,
@@ -99,6 +112,17 @@ class _InteractiveChartState extends State<InteractiveChart> {
   late double _prevStartOffset;
   late Offset _initialFocalPoint;
   PainterParams? _prevParams; // used in onTapUp event
+  double _topToolWindowHeight = 40;
+  double _bottomToolWindowHeight = 30;
+  CandleData? _selectedCandle;
+
+  List<Indicators> indicators = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,8 +145,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
         // If possible, find neighbouring trend line data,
         // so the chart could draw better-connected lines
-        final leadingTrends = widget.candles.at(start - 1)?.trends;
-        final trailingTrends = widget.candles.at(end + 1)?.trends;
+        final leadingTrends = widget.candles.at(start - 1)?.maLines;
+        final trailingTrends = widget.candles.at(end + 1)?.maLines;
 
         // Find the horizontal shift needed when drawing the candles.
         // First, always shift the chart by half a candle, because when we
@@ -135,15 +159,11 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
         // Calculate min and max among the visible data
         double? highest(CandleData c) {
-          if (c.high != null) return c.high;
-          if (c.open != null && c.close != null) return max(c.open!, c.close!);
-          return c.open ?? c.close;
+          return c.high;
         }
 
         double? lowest(CandleData c) {
-          if (c.low != null) return c.low;
-          if (c.open != null && c.close != null) return min(c.open!, c.close!);
-          return c.open ?? c.close;
+          return c.low;
         }
 
         final maxPrice =
@@ -164,7 +184,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
             end: PainterParams(
               candles: candlesInRange,
               style: widget.style,
-              size: size,
+              size: Size(size.width,
+                  size.height - _topToolWindowHeight - _bottomToolWindowHeight),
               candleWidth: _candleWidth,
               startOffset: _startOffset,
               maxPrice: maxPrice,
@@ -183,7 +204,11 @@ class _InteractiveChartState extends State<InteractiveChart> {
             _prevParams = params;
             return RepaintBoundary(
               child: CustomPaint(
-                size: size,
+                size: Size(
+                    size.width,
+                    size.height -
+                        _topToolWindowHeight -
+                        _bottomToolWindowHeight),
                 painter: ChartPainter(
                   params: params,
                   getTimeLabel: widget.timeLabel ?? defaultTimeLabel,
@@ -195,40 +220,237 @@ class _InteractiveChartState extends State<InteractiveChart> {
           },
         );
 
-        return Listener(
-          onPointerSignal: (signal) {
-            if (signal is PointerScrollEvent) {
-              final dy = signal.scrollDelta.dy;
-              if (dy.abs() > 0) {
-                _onScaleStart(signal.position);
-                _onScaleUpdate(
-                  dy > 0 ? 0.9 : 1.1,
-                  signal.position,
-                  w,
-                );
-              }
-            }
-          },
-          child: GestureDetector(
-            // Tap and hold to view candle details
-            onTapDown: (details) => setState(() {
-              _tapPosition = details.localPosition;
-            }),
-            onTapCancel: () => setState(() => _tapPosition = null),
-            onTapUp: (_) {
-              // Fire callback event and reset _tapPosition
-              if (widget.onTap != null) _fireOnTapEvent();
-              setState(() => _tapPosition = null);
-            },
-            // Pan and zoom
-            onScaleStart: (details) => _onScaleStart(details.localFocalPoint),
-            onScaleUpdate: (details) =>
-                _onScaleUpdate(details.scale, details.localFocalPoint, w),
-            child: child,
-          ),
+        Color dividerColor = Theme.of(context).dividerColor;
+        const double windowBorderSize = 1;
+        return Column(
+          children: [
+            // Top tool window
+            Container(
+              height: _topToolWindowHeight,
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom:
+                      BorderSide(color: dividerColor, width: windowBorderSize),
+                ),
+              ),
+              child: TopToolWindow(onIndicatorSelected: _onIndicatorSelected),
+            ),
+            Row(
+              children: [
+                // Left tool window
+                // Container(
+                //   width: 50.0,
+                //   decoration: BoxDecoration(
+                //     border: Border(
+                //       right: BorderSide(color: dividerColor, width: windowBorderSize),
+                //     ),
+                //   ),
+                //   child: LeftToolWindow(),
+                // ),
+                Listener(
+                  onPointerSignal: (signal) {
+                    if (signal is PointerScrollEvent) {
+                      final dy = signal.scrollDelta.dy;
+                      if (dy.abs() > 0) {
+                        _onScaleStart(signal.position);
+                        _onScaleUpdate(
+                          dy > 0 ? 0.9 : 1.1,
+                          signal.position,
+                          w,
+                        );
+                      }
+                    }
+                  },
+                  child: GestureDetector(
+                    // Tap and hold to view candle details
+                    onTapDown: (details) => setState(() {
+                      _tapPosition = details.localPosition;
+                    }),
+                    onTapCancel: () => setState(() => _tapPosition = null),
+                    onTapUp: (_) {
+                      // Fire callback event and reset _tapPosition
+                      if (widget.onTap != null) _fireOnTapEvent();
+                      setState(() => _tapPosition = null);
+                    },
+                    // Pan and zoom
+                    onScaleStart: (details) =>
+                        _onScaleStart(details.localFocalPoint),
+                    onScaleUpdate: (details) => _onScaleUpdate(
+                        details.scale, details.localFocalPoint, w),
+                    child: Stack(children: [
+                      child,
+                      _buildInfo(),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+            // Bottom tool window
+            Container(
+              height: 30.0,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: dividerColor, width: windowBorderSize),
+                ),
+              ),
+              child: BottomToolWindow(),
+            ),
+          ],
         );
       },
     );
+  }
+
+  Widget _buildInfo() {
+    if (_selectedCandle == null) {
+      _selectedCandle = widget.candles[widget.candles.length - 1];
+    }
+    if (_selectedCandle == null) {
+      return Container();
+    }
+    double changePercent = 0;
+    double change = _selectedCandle!.close - _selectedCandle!.open;
+    changePercent = change / _selectedCandle!.open * 100;
+    final infos = [
+      "O: ${_selectedCandle!.open.toStringAsFixed(fixedLength)}",
+      "H: ${_selectedCandle!.high.toStringAsFixed(fixedLength)}",
+      "L: ${_selectedCandle!.low.toStringAsFixed(fixedLength)}",
+      "C: ${_selectedCandle!.close.toStringAsFixed(fixedLength)}",
+      "Change: ${changePercent.toStringAsFixed(fixedLength)}%",
+    ];
+    Color valueColor = Colors.black;
+    if (changePercent > 0) {
+      valueColor = Colors.green;
+    } else if (changePercent < 0) {
+      valueColor = Colors.red;
+    }
+    List<Widget> infoWidget = [
+      Text(
+        widget.title,
+        style: TextStyle(fontSize: 12.0, decoration: TextDecoration.none),
+      ),
+      Text("  "),
+    ];
+    infoWidget.addAll(infos.map((info) {
+      return Row(
+        children: [
+          Text(
+            info.split(":")[0] + ": ",
+            style: TextStyle(fontSize: 10.0, decoration: TextDecoration.none),
+          ),
+          Text(
+            info.split(":")[1],
+            style: TextStyle(
+                color: valueColor,
+                fontSize: 10.0,
+                decoration: TextDecoration.none),
+          ),
+          SizedBox(width: 4),
+        ],
+      );
+    }).toList());
+    return Positioned(
+      left: 10,
+      top: 10,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: infoWidget,
+          ),
+          if (_selectedCandle!.volume! > 0) ...[
+            SizedBox(height: 4),
+            InfoWidget(
+              title: "Volume: ",
+              child: Row(
+                children: [
+                  Text(
+                    "${NumberUtil.format(_selectedCandle!.volume!)}",
+                    style: TextStyle(
+                        color: valueColor,
+                        fontSize: 10.0,
+                        decoration: TextDecoration.none),
+                  ),
+                ],
+              ),
+              toggleVisibility: _toggleVolumeVisibility,
+              showCloseIcon: false,
+            ),
+          ],
+          ...restInfo(_selectedCandle!),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> restInfo(CandleData? entity) {
+    return indicators.map((indicators) {
+      switch (indicators.indicators) {
+        case IndicatorsType.MA:
+          var maIndicator = indicators as MovingAverage;
+          return InfoWidget(
+              title: indicators.indicators.toString().split('.').last +
+                  " " +
+                  indicators.length.toString() +
+                  ": ",
+              child: Row(
+                children: [
+                  Text(
+                    entity?.maLines[maIndicator.length]
+                            ?.toStringAsFixed(fixedLength) ??
+                        '',
+                    style: TextStyle(
+                        fontSize: 10.0, decoration: TextDecoration.none),
+                  ),
+                ],
+              ));
+        case IndicatorsType.BOLL:
+        case IndicatorsType.MACD:
+        case IndicatorsType.KDJ:
+        case IndicatorsType.RSI:
+        case IndicatorsType.WR:
+        case IndicatorsType.CCI:
+      }
+      return InfoWidget(
+          title: indicators.indicators.toString().split('.').last + ": ",
+          child: Row(
+            children: [
+              Text(
+                "indicators.",
+                style:
+                    TextStyle(fontSize: 10.0, decoration: TextDecoration.none),
+              ),
+            ],
+          ));
+    }).toList();
+  }
+
+  void _toggleVolumeVisibility() {
+    setState(() {
+      // volHidden = !volHidden;
+    });
+  }
+
+  void _onIndicatorSelected(IndicatorsType indicatorType) {
+    setState(() {
+      switch (indicatorType) {
+        case IndicatorsType.MA:
+          indicators.add(MovingAverage(defaultMovingAverage, true));
+          final maDefault =
+              CandleData.computeMA(widget.candles, defaultMovingAverage);
+          for (int i = 0; i < widget.candles.length; i++) {
+            widget.candles[i].maLines[defaultMovingAverage] = maDefault[i];
+          }
+          break;
+        case IndicatorsType.BOLL:
+        case IndicatorsType.MACD:
+        case IndicatorsType.KDJ:
+        case IndicatorsType.RSI:
+        case IndicatorsType.WR:
+        case IndicatorsType.CCI:
+      }
+    });
+    _savePreferences();
   }
 
   _onScaleStart(Offset focalPoint) {
@@ -322,14 +544,15 @@ class _InteractiveChartState extends State<InteractiveChart> {
   String defaultPriceLabel(double price) => price.toStringAsFixed(2);
 
   Map<String, String> defaultOverlayInfo(CandleData candle) {
-    final date = intl.DateFormat.yMMMd()
+    final date = DateFormat.yMMMd()
         .format(DateTime.fromMillisecondsSinceEpoch(candle.timestamp));
+    _selectedCandle = candle;
     return {
       "Date": date,
-      "Open": candle.open?.toStringAsFixed(2) ?? "-",
-      "High": candle.high?.toStringAsFixed(2) ?? "-",
-      "Low": candle.low?.toStringAsFixed(2) ?? "-",
-      "Close": candle.close?.toStringAsFixed(2) ?? "-",
+      "Open": candle.open.toStringAsFixed(2),
+      "High": candle.high.toStringAsFixed(2),
+      "Low": candle.low.toStringAsFixed(2),
+      "Close": candle.close.toStringAsFixed(2),
       "Volume": candle.volume?.asAbbreviated() ?? "-",
     };
   }
@@ -342,19 +565,61 @@ class _InteractiveChartState extends State<InteractiveChart> {
     final candle = params.candles[selected];
     widget.onTap?.call(candle);
   }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      // indicators = [];
+      // _savePreferences();
+      final indicatorsString = prefs.getString(KeyIndicators);
+      if (indicatorsString != null) {
+        final List<dynamic> jsonList = jsonDecode(indicatorsString);
+        indicators = jsonList.map((json) => Indicators.fromJson(json)).toList();
+      } else {
+        indicators = [];
+      }
+    });
+    setState(() {
+      for (Indicators indicator in indicators) {
+        switch (indicator.indicators) {
+          case IndicatorsType.MA:
+            var maIndicator = indicator as MovingAverage;
+            final maDefault =
+                CandleData.computeMA(widget.candles, maIndicator.length);
+            for (int i = 0; i < widget.candles.length; i++) {
+              widget.candles[i].maLines[maIndicator.length] = maDefault[i];
+            }
+            break;
+          case IndicatorsType.BOLL:
+          case IndicatorsType.MACD:
+          case IndicatorsType.KDJ:
+          case IndicatorsType.RSI:
+          case IndicatorsType.WR:
+          case IndicatorsType.CCI:
+        }
+      }
+    });
+  }
+
+  Future<void> _savePreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final indicatorsString =
+        jsonEncode(indicators.map((i) => i.toJson()).toList());
+    prefs.setString(KeyIndicators, indicatorsString);
+  }
 }
 
 extension Formatting on double {
   String asPercent() {
     final format = this < 100 ? "##0.00" : "#,###";
-    final v = intl.NumberFormat(format, "en_US").format(this);
+    final v = NumberFormat(format, "en_US").format(this);
     return "${this >= 0 ? '+' : ''}$v%";
   }
 
   String asAbbreviated() {
     if (this < 1000) return this.toStringAsFixed(3);
     if (this >= 1e18) return this.toStringAsExponential(3);
-    final s = intl.NumberFormat("#,###", "en_US").format(this).split(",");
+    final s = NumberFormat("#,###", "en_US").format(this).split(",");
     const suffixes = ["K", "M", "B", "T", "Q"];
     return "${s[0]}.${s[1]}${suffixes[s.length - 2]}";
   }

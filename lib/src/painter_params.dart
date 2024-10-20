@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/widgets.dart';
 
 import 'chart_style.dart';
-import 'candle_data.dart';
+import 'entity/candle_data.dart';
 
 class PainterParams {
   final List<CandleData> candles;
@@ -18,8 +18,8 @@ class PainterParams {
 
   final double xShift;
   final Offset? tapPosition;
-  final List<double?>? leadingTrends;
-  final List<double?>? trailingTrends;
+  final Map<int, double?>? leadingTrends;
+  final Map<int, double?>? trailingTrends;
 
   PainterParams({
     required this.candles,

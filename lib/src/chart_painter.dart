@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import 'candle_data.dart';
+import 'entity/candle_data.dart';
 import 'painter_params.dart';
 
 typedef TimeLabelGetter = String Function(int timestamp, int visibleDataCount);
@@ -117,27 +117,23 @@ class ChartPainter extends CustomPainter {
     final close = candle.close;
     final high = candle.high;
     final low = candle.low;
-    if (open != null && close != null) {
-      final color = open > close
-          ? params.style.priceLossColor
-          : params.style.priceGainColor;
-      canvas.drawLine(
-        Offset(x, params.fitPrice(open)),
-        Offset(x, params.fitPrice(close)),
-        Paint()
-          ..strokeWidth = thickWidth
-          ..color = color,
-      );
-      if (high != null && low != null) {
-        canvas.drawLine(
-          Offset(x, params.fitPrice(high)),
-          Offset(x, params.fitPrice(low)),
-          Paint()
-            ..strokeWidth = thinWidth
-            ..color = color,
-        );
-      }
-    }
+    final color = open > close
+        ? params.style.priceLossColor
+        : params.style.priceGainColor;
+    canvas.drawLine(
+      Offset(x, params.fitPrice(open)),
+      Offset(x, params.fitPrice(close)),
+      Paint()
+        ..strokeWidth = thickWidth
+        ..color = color,
+    );
+    canvas.drawLine(
+      Offset(x, params.fitPrice(high)),
+      Offset(x, params.fitPrice(low)),
+      Paint()
+        ..strokeWidth = thinWidth
+        ..color = color,
+    );
     // Draw volume bar
     final volume = candle.volume;
     if (volume != null) {
@@ -150,15 +146,16 @@ class ChartPainter extends CustomPainter {
       );
     }
     // Draw trend line
-    for (int j = 0; j < candle.trends.length; j++) {
-      final trendLinePaint = params.style.trendLineStyles.at(j) ??
+    candle.maLines.forEach((key, value) {
+      // for (int j = 0; j < candle.trends.length; j++) {
+      final trendLinePaint = params.style.maStyles[key] ??
           (Paint()
             ..strokeWidth = 2.0
             ..strokeCap = StrokeCap.round
             ..color = Colors.blue);
 
-      final pt = candle.trends.at(j); // current data point
-      final prevPt = params.candles.at(i - 1)?.trends.at(j);
+      final pt = value; // current data point
+      final prevPt = params.candles.at(i - 1)?.maLines[key];
       if (pt != null && prevPt != null) {
         canvas.drawLine(
           Offset(x - params.candleWidth, params.fitPrice(prevPt)),
@@ -168,28 +165,28 @@ class ChartPainter extends CustomPainter {
       }
       if (i == 0) {
         // In the front, draw an extra line connecting to out-of-window data
-        if (pt != null && params.leadingTrends?.at(j) != null) {
+        if (pt != null && params.leadingTrends?[key] != null) {
           canvas.drawLine(
             Offset(x - params.candleWidth,
-                params.fitPrice(params.leadingTrends!.at(j)!)),
+                params.fitPrice(params.leadingTrends![key]!)),
             Offset(x, params.fitPrice(pt)),
             trendLinePaint,
           );
         }
       } else if (i == params.candles.length - 1) {
         // At the end, draw an extra line connecting to out-of-window data
-        if (pt != null && params.trailingTrends?.at(j) != null) {
+        if (pt != null && params.trailingTrends?[key] != null) {
           canvas.drawLine(
             Offset(x, params.fitPrice(pt)),
             Offset(
               x + params.candleWidth,
-              params.fitPrice(params.trailingTrends!.at(j)!),
+              params.fitPrice(params.trailingTrends![key]!),
             ),
             trendLinePaint,
           );
         }
       }
-    }
+    });
   }
 
   void _drawTapHighlightAndOverlay(canvas, PainterParams params) {

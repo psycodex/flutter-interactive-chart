@@ -41,7 +41,7 @@ class ChartStyle {
   /// The style of trend lines. If there are multiple lines, their styles will
   /// be chosen in the order of appearance in this list. If this list is shorter
   /// than the number of trend lines, a default blue paint will be applied.
-  final List<Paint> trendLineStyles;
+  final Map<int, Paint> maStyles;
 
   /// The color of the price grid line.
   final Color priceGridLineColor;
@@ -73,7 +73,7 @@ class ChartStyle {
     this.priceGainColor = Colors.green,
     this.priceLossColor = Colors.red,
     this.volumeColor = Colors.grey,
-    this.trendLineStyles = const [],
+    this.maStyles = const {},
     this.priceGridLineColor = Colors.grey,
     this.selectionHighlightColor = const Color(0x33757575),
     this.overlayBackgroundColor = const Color(0xEE757575),
