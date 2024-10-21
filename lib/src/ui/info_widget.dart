@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 
 class InfoWidget extends StatefulWidget {
   final String title;
+  final int? length;
   final Widget child;
   final VoidCallback? toggleVisibility;
+  final VoidCallback? closeCallback;
+  final void Function(int, int?)? saveCallback;
   final bool showVisibilityIcon;
   final bool showSettingsIcon;
   final bool showCloseIcon;
@@ -12,7 +15,10 @@ class InfoWidget extends StatefulWidget {
     Key? key,
     required this.title,
     required this.child,
+    this.length,
     this.toggleVisibility,
+    this.closeCallback,
+    this.saveCallback,
     this.showVisibilityIcon = true,
     this.showSettingsIcon = true,
     this.showCloseIcon = true,
@@ -26,6 +32,13 @@ class _InfoWidgetState extends State<InfoWidget> {
   bool _isHovered = false;
   bool _isVisible = true;
   double _height = 15;
+  final TextEditingController _lengthController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _lengthController.text = widget.length?.toString() ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +69,10 @@ class _InfoWidgetState extends State<InfoWidget> {
                                   : Icons.visibility_off,
                             ),
                             onPressed: () => {
-                              _isVisible = !_isVisible,
-                              widget.toggleVisibility?.call()
+                              setState(() {
+                                _isVisible = !_isVisible;
+                                widget.toggleVisibility?.call();
+                              })
                             },
                           ),
                         ),
@@ -80,11 +95,9 @@ class _InfoWidgetState extends State<InfoWidget> {
                             iconSize: 12,
                             splashRadius: 1,
                             icon: Icon(
-                              _isVisible
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
+                              Icons.close,
                             ),
-                            onPressed: _closeWidget,
+                            onPressed: widget.closeCallback?.call,
                           ),
                         ),
                     ],
@@ -97,16 +110,45 @@ class _InfoWidgetState extends State<InfoWidget> {
   }
 
   void _openSettingsDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Settings'),
-          content: Text('Settings dialog content goes here.'),
+          title: const Text('Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Text('Change Length:'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _lengthController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: "Length",
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           actions: <Widget>[
             TextButton(
-              child: Text('Close'),
+              child: const Text('Cancel'),
               onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Save'),
+              onPressed: () {
+                var length =
+                    int.tryParse(_lengthController.text) ?? widget.length;
+                widget.saveCallback?.call(length!, widget.length);
                 Navigator.of(context).pop();
               },
             ),
@@ -114,11 +156,5 @@ class _InfoWidgetState extends State<InfoWidget> {
         );
       },
     );
-  }
-
-  void _closeWidget() {
-    setState(() {
-      _isVisible = false;
-    });
   }
 }

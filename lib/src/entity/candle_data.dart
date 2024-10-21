@@ -38,6 +38,7 @@ class CandleData {
   /// or `clear` methods on the list. Always assign a new list if values
   /// are changed. Otherwise the UI might not be updated.
   Map<int, double?> maLines = {};
+  static bool forceUpdate = false;
 
   CandleData({
     required this.timestamp,

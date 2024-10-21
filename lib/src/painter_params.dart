@@ -118,6 +118,10 @@ class PainterParams {
     if (leadingTrends != other.leadingTrends ||
         trailingTrends != other.trailingTrends) return true;
 
+    if (CandleData.forceUpdate) {
+      CandleData.forceUpdate = false;
+      return true;
+    }
     if (style != other.style) return true;
 
     return false;

@@ -1,16 +1,14 @@
-import 'package:interactive_chart/src/indicators/moving_average.dart';
-
 enum IndicatorsType { MA, BOLL, MACD, KDJ, RSI, WR, CCI }
 
-abstract class Indicators {
-  final IndicatorsType indicators;
+class Indicators {
+  final IndicatorsType indicatorType;
   final bool isShow;
   int length;
 
-  Indicators(this.indicators, this.length, this.isShow);
+  Indicators(this.indicatorType, this.length, this.isShow);
 
   Map<String, dynamic> toJson() => {
-        'indicators': indicators.toString().split('.').last,
+        'indicators': indicatorType.toString().split('.').last,
         'isShow': isShow,
         'length': length,
       };
@@ -20,18 +18,7 @@ abstract class Indicators {
         .firstWhere((e) => e.toString().split('.').last == json['indicators']);
     var length = json['length'];
     var isShow = json['isShow'];
-    switch (type) {
-      case IndicatorsType.MA:
-        return MovingAverage(length, isShow);
-      case IndicatorsType.BOLL:
-      case IndicatorsType.MACD:
-      case IndicatorsType.KDJ:
-      case IndicatorsType.RSI:
-      case IndicatorsType.WR:
-      case IndicatorsType.CCI:
-      default:
-        throw Exception('Unknown indicator type: $type');
-    }
+    return Indicators(type, length, isShow);
   }
 }
 

@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:interactive_chart/src/indicators/moving_average.dart';
 import 'package:interactive_chart/src/ui/top_tool_window.dart';
 
 import 'constants.dart';
@@ -279,7 +278,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
                         details.scale, details.localFocalPoint, w),
                     child: Stack(children: [
                       child,
-                      _buildInfo(),
+                      _buildDefaultInfo(),
                     ]),
                   ),
                 ),
@@ -301,7 +300,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
     );
   }
 
-  Widget _buildInfo() {
+  Widget _buildDefaultInfo() {
     if (_selectedCandle == null) {
       _selectedCandle = widget.candles[widget.candles.length - 1];
     }
@@ -377,51 +376,55 @@ class _InteractiveChartState extends State<InteractiveChart> {
               showCloseIcon: false,
             ),
           ],
-          ...restInfo(_selectedCandle!),
+          ..._buildSecondaryInfo(_selectedCandle!),
         ],
       ),
     );
   }
 
-  List<Widget> restInfo(CandleData? entity) {
-    return indicators.map((indicators) {
-      switch (indicators.indicators) {
-        case IndicatorsType.MA:
-          var maIndicator = indicators as MovingAverage;
-          return InfoWidget(
-              title: indicators.indicators.toString().split('.').last +
-                  " " +
-                  indicators.length.toString() +
-                  ": ",
-              child: Row(
-                children: [
-                  Text(
-                    entity?.maLines[maIndicator.length]
-                            ?.toStringAsFixed(fixedLength) ??
-                        '',
-                    style: TextStyle(
-                        fontSize: 10.0, decoration: TextDecoration.none),
-                  ),
-                ],
-              ));
-        case IndicatorsType.BOLL:
-        case IndicatorsType.MACD:
-        case IndicatorsType.KDJ:
-        case IndicatorsType.RSI:
-        case IndicatorsType.WR:
-        case IndicatorsType.CCI:
-      }
+  List<Widget> _buildSecondaryInfo(CandleData? entity) {
+    return indicators.map((indicator) {
       return InfoWidget(
-          title: indicators.indicators.toString().split('.').last + ": ",
-          child: Row(
-            children: [
-              Text(
-                "indicators.",
-                style:
-                    TextStyle(fontSize: 10.0, decoration: TextDecoration.none),
-              ),
-            ],
-          ));
+        title: indicator.indicatorType.toString().split('.').last +
+            " " +
+            indicator.length.toString() +
+            ": ",
+        length: indicator.length,
+        child: Row(
+          children: [
+            Text(
+              entity?.maLines[indicator.length]?.toStringAsFixed(fixedLength) ??
+                  '',
+              style: TextStyle(fontSize: 10.0, decoration: TextDecoration.none),
+            ),
+          ],
+        ),
+        closeCallback: () => setState(() {
+          indicators.remove(indicator);
+          for (int i = 0; i < widget.candles.length; i++) {
+            widget.candles[i].maLines.remove(indicator.length);
+          }
+          CandleData.forceUpdate = true;
+          _savePreferences();
+        }),
+        saveCallback: (int length, int? previousLength) {
+          if (length == previousLength) {
+            return;
+          }
+          setState(() {
+            for (int i = 0; i < widget.candles.length; i++) {
+              widget.candles[i].maLines.remove(previousLength);
+            }
+            indicator.length = length;
+            final ma = CandleData.computeMA(widget.candles, indicator.length);
+            for (int i = 0; i < widget.candles.length; i++) {
+              widget.candles[i].maLines[indicator.length] = ma[i];
+            }
+            CandleData.forceUpdate = true;
+          });
+          _savePreferences();
+        },
+      );
     }).toList();
   }
 
@@ -433,23 +436,14 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
   void _onIndicatorSelected(IndicatorsType indicatorType) {
     setState(() {
-      switch (indicatorType) {
-        case IndicatorsType.MA:
-          indicators.add(MovingAverage(defaultMovingAverage, true));
-          final maDefault =
-              CandleData.computeMA(widget.candles, defaultMovingAverage);
-          for (int i = 0; i < widget.candles.length; i++) {
-            widget.candles[i].maLines[defaultMovingAverage] = maDefault[i];
-          }
-          break;
-        case IndicatorsType.BOLL:
-        case IndicatorsType.MACD:
-        case IndicatorsType.KDJ:
-        case IndicatorsType.RSI:
-        case IndicatorsType.WR:
-        case IndicatorsType.CCI:
+      indicators.add(Indicators(IndicatorsType.MA, defaultMovingAverage, true));
+      final maDefault =
+          CandleData.computeMA(widget.candles, defaultMovingAverage);
+      for (int i = 0; i < widget.candles.length; i++) {
+        widget.candles[i].maLines[defaultMovingAverage] = maDefault[i];
       }
     });
+    CandleData.forceUpdate = true;
     _savePreferences();
   }
 
@@ -581,21 +575,10 @@ class _InteractiveChartState extends State<InteractiveChart> {
     });
     setState(() {
       for (Indicators indicator in indicators) {
-        switch (indicator.indicators) {
-          case IndicatorsType.MA:
-            var maIndicator = indicator as MovingAverage;
-            final maDefault =
-                CandleData.computeMA(widget.candles, maIndicator.length);
-            for (int i = 0; i < widget.candles.length; i++) {
-              widget.candles[i].maLines[maIndicator.length] = maDefault[i];
-            }
-            break;
-          case IndicatorsType.BOLL:
-          case IndicatorsType.MACD:
-          case IndicatorsType.KDJ:
-          case IndicatorsType.RSI:
-          case IndicatorsType.WR:
-          case IndicatorsType.CCI:
+        final maDefault =
+            CandleData.computeMA(widget.candles, indicator.length);
+        for (int i = 0; i < widget.candles.length; i++) {
+          widget.candles[i].maLines[indicator.length] = maDefault[i];
         }
       }
     });

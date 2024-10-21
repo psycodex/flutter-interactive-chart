@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:interactive_chart/interactive_chart.dart';
-
+import 'package:intl/intl.dart';
 import 'mock_data.dart';
 
 void main() {
@@ -17,7 +17,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final List<CandleData> _data = MockDataTesla.candles;
   bool _darkMode = true;
-  bool _showAverage = false;
 
   @override
   Widget build(BuildContext context) {
@@ -33,19 +32,6 @@ class _MyAppState extends State<MyApp> {
             IconButton(
               icon: Icon(_darkMode ? Icons.dark_mode : Icons.light_mode),
               onPressed: () => setState(() => _darkMode = !_darkMode),
-            ),
-            IconButton(
-              icon: Icon(
-                _showAverage ? Icons.show_chart : Icons.bar_chart_outlined,
-              ),
-              onPressed: () {
-                setState(() => _showAverage = !_showAverage);
-                if (_showAverage) {
-                  _computeTrendLines();
-                } else {
-                  _removeTrendLines();
-                }
-              },
             ),
           ],
         ),
@@ -84,13 +70,13 @@ class _MyAppState extends State<MyApp> {
             volumeHeightFactor: 0.2, // volume area is 20% of total height
           ),
           /** Customize axis labels */
-          // timeLabel: (timestamp, visibleDataCount) {
-          //   final DateTime dateTime =
-          //       DateTime.fromMillisecondsSinceEpoch(timestamp);
-          //   final DateFormat formatter = DateFormat('yyyy-MM-dd');
-          //   return formatter.format(dateTime);
-          // },
-          // priceLabel: (price) => "${price.round()}",
+          timeLabel: (timestamp, visibleDataCount) {
+            final DateTime dateTime =
+                DateTime.fromMillisecondsSinceEpoch(timestamp);
+            final DateFormat formatter = DateFormat('yyyy-MM-dd');
+            return formatter.format(dateTime);
+          },
+          priceLabel: (price) => "${price.round()}",
           /** Customize overlay (tap and hold to see it)
            ** Or return an empty object to disable overlay info. */
           // overlayInfo: (candle) => {
@@ -103,27 +89,5 @@ class _MyAppState extends State<MyApp> {
         ),
       ),
     );
-  }
-
-  _computeTrendLines() {
-    final ma7 = CandleData.computeMA(_data, 7);
-    final ma30 = CandleData.computeMA(_data, 30);
-    final ma90 = CandleData.computeMA(_data, 90);
-
-    for (int i = 0; i < _data.length; i++) {
-      // _data[i].trends = [ma7[i], ma30[i], ma90[i]];
-      _data[i].maLines = {
-        7: ma7[i],
-        30: ma30[i],
-        90: ma90[i],
-      };
-    }
-  }
-
-  _removeTrendLines() {
-    for (final data in _data) {
-      // data.trends = [];
-      data.maLines = {};
-    }
   }
 }
