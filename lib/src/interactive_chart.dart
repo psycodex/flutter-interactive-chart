@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:interactive_chart/src/entity/entity.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -19,15 +20,7 @@ import 'ui/info_widget.dart';
 import 'util/number_util.dart';
 
 class InteractiveChart extends StatefulWidget {
-  final String title;
-
-  /// The full list of [CandleData] to be used for this chart.
-  ///
-  /// It needs to have at least 3 data points. If data is sufficiently large,
-  /// the chart will default to display the most recent 90 data points when
-  /// first opened (configurable with [initialVisibleCandleCount] parameter),
-  /// and allow users to freely zoom and pan however they like.
-  final List<CandleData> candles;
+  final Entity entity;
 
   /// The default number of data points to be displayed when the chart is first
   /// opened. The default value is 90. If [CandleData] does not have enough data
@@ -73,8 +66,7 @@ class InteractiveChart extends StatefulWidget {
 
   InteractiveChart({
     Key? key,
-    required this.title,
-    required this.candles,
+    required this.entity,
     this.initialVisibleCandleCount = 90,
     ChartStyle? style,
     this.timeLabel,
@@ -83,7 +75,7 @@ class InteractiveChart extends StatefulWidget {
     this.onTap,
     this.onCandleResize,
   })  : this.style = style ?? const ChartStyle(),
-        assert(candles.length >= 3,
+        assert(entity.candles.length >= 3,
             "InteractiveChart requires 3 or more CandleData"),
         assert(initialVisibleCandleCount >= 3,
             "initialVisibleCandleCount must be more 3 or more"),
@@ -134,18 +126,20 @@ class _InteractiveChartState extends State<InteractiveChart> {
         // Find the visible data range
         final int start = (_startOffset / _candleWidth).floor();
         final int count = (w / _candleWidth).ceil();
-        final int end = (start + count).clamp(start, widget.candles.length);
-        final candlesInRange = widget.candles.getRange(start, end).toList();
-        if (end < widget.candles.length) {
+        final int end =
+            (start + count).clamp(start, widget.entity.candles.length);
+        final candlesInRange =
+            widget.entity.candles.getRange(start, end).toList();
+        if (end < widget.entity.candles.length) {
           // Put in an extra item, since it can become visible when scrolling
-          final nextItem = widget.candles[end];
+          final nextItem = widget.entity.candles[end];
           candlesInRange.add(nextItem);
         }
 
         // If possible, find neighbouring trend line data,
         // so the chart could draw better-connected lines
-        final leadingTrends = widget.candles.at(start - 1)?.maLines;
-        final trailingTrends = widget.candles.at(end + 1)?.maLines;
+        final leadingTrends = widget.entity.candles.at(start - 1)?.maLines;
+        final trailingTrends = widget.entity.candles.at(end + 1)?.maLines;
 
         // Find the horizontal shift needed when drawing the candles.
         // First, always shift the chart by half a candle, because when we
@@ -302,7 +296,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
   Widget _buildDefaultInfo() {
     if (_selectedCandle == null) {
-      _selectedCandle = widget.candles[widget.candles.length - 1];
+      _selectedCandle = widget.entity.candles[widget.entity.candles.length - 1];
     }
     if (_selectedCandle == null) {
       return Container();
@@ -325,7 +319,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
     }
     List<Widget> infoWidget = [
       Text(
-        widget.title,
+        widget.entity.title,
         style: TextStyle(fontSize: 12.0, decoration: TextDecoration.none),
       ),
       Text("  "),
@@ -401,8 +395,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
         ),
         closeCallback: () => setState(() {
           indicators.remove(indicator);
-          for (int i = 0; i < widget.candles.length; i++) {
-            widget.candles[i].maLines.remove(indicator.length);
+          for (int i = 0; i < widget.entity.candles.length; i++) {
+            widget.entity.candles[i].maLines.remove(indicator.length);
           }
           CandleData.forceUpdate = true;
           _savePreferences();
@@ -412,13 +406,14 @@ class _InteractiveChartState extends State<InteractiveChart> {
             return;
           }
           setState(() {
-            for (int i = 0; i < widget.candles.length; i++) {
-              widget.candles[i].maLines.remove(previousLength);
+            for (int i = 0; i < widget.entity.candles.length; i++) {
+              widget.entity.candles[i].maLines.remove(previousLength);
             }
             indicator.length = length;
-            final ma = CandleData.computeMA(widget.candles, indicator.length);
-            for (int i = 0; i < widget.candles.length; i++) {
-              widget.candles[i].maLines[indicator.length] = ma[i];
+            final ma =
+                CandleData.computeMA(widget.entity.candles, indicator.length);
+            for (int i = 0; i < widget.entity.candles.length; i++) {
+              widget.entity.candles[i].maLines[indicator.length] = ma[i];
             }
             CandleData.forceUpdate = true;
           });
@@ -438,9 +433,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
     setState(() {
       indicators.add(Indicators(IndicatorsType.MA, defaultMovingAverage, true));
       final maDefault =
-          CandleData.computeMA(widget.candles, defaultMovingAverage);
-      for (int i = 0; i < widget.candles.length; i++) {
-        widget.candles[i].maLines[defaultMovingAverage] = maDefault[i];
+          CandleData.computeMA(widget.entity.candles, defaultMovingAverage);
+      for (int i = 0; i < widget.entity.candles.length; i++) {
+        widget.entity.candles[i].maLines[defaultMovingAverage] = maDefault[i];
       }
     });
     CandleData.forceUpdate = true;
@@ -496,26 +491,27 @@ class _InteractiveChartState extends State<InteractiveChart> {
       // Default zoom level. Defaults to a 90 day chart, but configurable.
       // If data is shorter, we use the whole range.
       final count = min(
-        widget.candles.length,
+        widget.entity.candles.length,
         widget.initialVisibleCandleCount,
       );
       _candleWidth = w / count;
       // Default show the latest available data, e.g. the most recent 90 days.
-      _startOffset = (widget.candles.length - count) * _candleWidth;
+      _startOffset = (widget.entity.candles.length - count) * _candleWidth;
     }
     _prevChartWidth = w;
   }
 
   // The narrowest candle width, i.e. when drawing all available data points.
-  double _getMinCandleWidth(double w) => w / widget.candles.length;
+  double _getMinCandleWidth(double w) => w / widget.entity.candles.length;
 
   // The widest candle width, e.g. when drawing 14 day chart
-  double _getMaxCandleWidth(double w) => w / min(14, widget.candles.length);
+  double _getMaxCandleWidth(double w) =>
+      w / min(14, widget.entity.candles.length);
 
   // Max start offset: how far can we scroll towards the end of the chart
   double _getMaxStartOffset(double w, double candleWidth) {
     final count = w / candleWidth; // visible candles in the window
-    final start = widget.candles.length - count;
+    final start = widget.entity.candles.length - count;
     return max(0, candleWidth * start);
   }
 
@@ -576,9 +572,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
     setState(() {
       for (Indicators indicator in indicators) {
         final maDefault =
-            CandleData.computeMA(widget.candles, indicator.length);
-        for (int i = 0; i < widget.candles.length; i++) {
-          widget.candles[i].maLines[indicator.length] = maDefault[i];
+            CandleData.computeMA(widget.entity.candles, indicator.length);
+        for (int i = 0; i < widget.entity.candles.length; i++) {
+          widget.entity.candles[i].maLines[indicator.length] = maDefault[i];
         }
       }
     });
