@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:interactive_chart/interactive_chart.dart';
 import 'package:intl/intl.dart';
 import 'mock_data.dart';
-import 'package:interactive_chart/src/entity/entity.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,12 +40,6 @@ class _MyAppState extends State<MyApp> {
             "Tesla Inc. (TSLA)",
             _data,
           ),
-          // title: "Tesla Inc. (TSLA)",
-          /** Only [candles] is required */
-          // candles: _data,
-          /** Uncomment the following for examples on optional parameters */
-
-          /** Example styling */
           style: ChartStyle(
             priceGainColor: Colors.green,
             priceLossColor: Colors.red,

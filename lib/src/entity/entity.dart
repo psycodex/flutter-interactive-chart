@@ -1,3 +1,5 @@
+import 'package:interactive_chart/src/indicators/indicators.dart';
+
 import 'candle_data.dart';
 
 class Entity {
@@ -10,6 +12,8 @@ class Entity {
   /// first opened (configurable with [initialVisibleCandleCount] parameter),
   /// and allow users to freely zoom and pan however they like.
   List<CandleData> candles;
+
+  List<Indicators> indicators = [];
 
   Entity(this.title, this.candles);
 }

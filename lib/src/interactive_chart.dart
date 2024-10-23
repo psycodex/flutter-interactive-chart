@@ -107,8 +107,6 @@ class _InteractiveChartState extends State<InteractiveChart> {
   double _bottomToolWindowHeight = 30;
   CandleData? _selectedCandle;
 
-  List<Indicators> indicators = [];
-
   @override
   void initState() {
     super.initState();
@@ -254,26 +252,31 @@ class _InteractiveChartState extends State<InteractiveChart> {
                       }
                     }
                   },
-                  child: GestureDetector(
-                    // Tap and hold to view candle details
-                    onTapDown: (details) => setState(() {
+                  child: MouseRegion(
+                    onHover: (details) => setState(() {
                       _tapPosition = details.localPosition;
                     }),
-                    onTapCancel: () => setState(() => _tapPosition = null),
-                    onTapUp: (_) {
-                      // Fire callback event and reset _tapPosition
-                      if (widget.onTap != null) _fireOnTapEvent();
-                      setState(() => _tapPosition = null);
-                    },
-                    // Pan and zoom
-                    onScaleStart: (details) =>
-                        _onScaleStart(details.localFocalPoint),
-                    onScaleUpdate: (details) => _onScaleUpdate(
-                        details.scale, details.localFocalPoint, w),
-                    child: Stack(children: [
-                      child,
-                      _buildDefaultInfo(),
-                    ]),
+                    child: GestureDetector(
+                      // Tap and hold to view candle details
+                      onTapDown: (details) => setState(() {
+                        _tapPosition = details.localPosition;
+                      }),
+                      onTapCancel: () => setState(() => _tapPosition = null),
+                      onTapUp: (_) {
+                        // Fire callback event and reset _tapPosition
+                        if (widget.onTap != null) _fireOnTapEvent();
+                        setState(() => _tapPosition = null);
+                      },
+                      // Pan and zoom
+                      onScaleStart: (details) =>
+                          _onScaleStart(details.localFocalPoint),
+                      onScaleUpdate: (details) => _onScaleUpdate(
+                          details.scale, details.localFocalPoint, w),
+                      child: Stack(children: [
+                        child,
+                        _buildDefaultInfo(),
+                      ]),
+                    ),
                   ),
                 ),
               ],
@@ -377,7 +380,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
   }
 
   List<Widget> _buildSecondaryInfo(CandleData? entity) {
-    return indicators.map((indicator) {
+    return widget.entity.indicators.map((indicator) {
       return InfoWidget(
         title: indicator.indicatorType.toString().split('.').last +
             " " +
@@ -394,7 +397,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
           ],
         ),
         closeCallback: () => setState(() {
-          indicators.remove(indicator);
+          widget.entity.indicators.remove(indicator);
           for (int i = 0; i < widget.entity.candles.length; i++) {
             widget.entity.candles[i].maLines.remove(indicator.length);
           }
@@ -431,7 +434,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
   void _onIndicatorSelected(IndicatorsType indicatorType) {
     setState(() {
-      indicators.add(Indicators(IndicatorsType.MA, defaultMovingAverage, true));
+      widget.entity.indicators
+          .add(Indicators(IndicatorsType.MA, defaultMovingAverage, true));
       final maDefault =
           CandleData.computeMA(widget.entity.candles, defaultMovingAverage);
       for (int i = 0; i < widget.entity.candles.length; i++) {
@@ -564,13 +568,14 @@ class _InteractiveChartState extends State<InteractiveChart> {
       final indicatorsString = prefs.getString(KeyIndicators);
       if (indicatorsString != null) {
         final List<dynamic> jsonList = jsonDecode(indicatorsString);
-        indicators = jsonList.map((json) => Indicators.fromJson(json)).toList();
+        widget.entity.indicators =
+            jsonList.map((json) => Indicators.fromJson(json)).toList();
       } else {
-        indicators = [];
+        widget.entity.indicators = [];
       }
     });
     setState(() {
-      for (Indicators indicator in indicators) {
+      for (Indicators indicator in widget.entity.indicators) {
         final maDefault =
             CandleData.computeMA(widget.entity.candles, indicator.length);
         for (int i = 0; i < widget.entity.candles.length; i++) {
@@ -583,7 +588,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final indicatorsString =
-        jsonEncode(indicators.map((i) => i.toJson()).toList());
+        jsonEncode(widget.entity.indicators.map((i) => i.toJson()).toList());
     prefs.setString(KeyIndicators, indicatorsString);
   }
 }
