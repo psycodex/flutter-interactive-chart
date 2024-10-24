@@ -106,6 +106,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
   double _topToolWindowHeight = 40;
   double _bottomToolWindowHeight = 30;
   CandleData? _selectedCandle;
+  String? previousTitle;
 
   @override
   void initState() {
@@ -120,6 +121,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
         final size = constraints.biggest;
         final w = size.width - widget.style.priceLabelWidth;
         _handleResize(w);
+
+        previousTitle = widget.entity.title;
 
         // Find the visible data range
         final int start = (_startOffset / _candleWidth).floor();
@@ -480,7 +483,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
   }
 
   _handleResize(double w) {
-    if (w == _prevChartWidth) return;
+    if (w == _prevChartWidth && widget.entity.title == previousTitle) return;
     if (_prevChartWidth != null) {
       // Re-clamp when size changes (e.g. screen rotation)
       _candleWidth = _candleWidth.clamp(
