@@ -24,13 +24,11 @@ class ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw time labels (dates) & price labels
-    _drawTimeLabels(canvas, params);
     _drawPriceGridAndLabels(canvas, params);
 
-    // Draw prices, volumes & trend line
+    // Draw prices, volumes & trend line in main chart area
     canvas.save();
-    canvas.clipRect(Offset.zero & Size(params.chartWidth, params.chartHeight));
+    canvas.clipRect(Offset.zero & Size(params.chartWidth, params.chartMainHeight));
     // canvas.drawRect(
     //   // apply yellow tint to clipped area (for debugging)
     //   Offset.zero & Size(params.chartWidth, params.chartHeight),
@@ -42,11 +40,30 @@ class ChartPainter extends CustomPainter {
     }
     canvas.restore();
 
-    // Draw tap highlight & overlay
+    // Draw indicator area
+    canvas.save();
+    // canvas.clipRect(indicatorRect);
+    canvas.translate(params.xShift, params.chartMainHeight);
+    _drawIndicator(canvas, params);
+    canvas.restore();
+
+    // Draw time labels at the bottom
+    _drawTimeLabels(canvas, params);
+
+    // Draw tap highlight & overlay on top of everything
     if (params.tapPosition != null) {
       if (params.tapPosition!.dx < params.chartWidth) {
         _drawTapHighlightAndOverlay(canvas, params);
       }
+    }
+  }
+
+  void _drawIndicator(Canvas canvas, PainterParams params) {
+    // Implement indicator drawing logic here
+    // This will sync with the same x-axis as the main chart
+    for (int i = 0; i < params.candles.length; i++) {
+      final x = i * params.candleWidth;
+      // Draw your indicator values here
     }
   }
 
@@ -107,11 +124,12 @@ class ChartPainter extends CustomPainter {
     });
   }
 
-  void _drawSingleDay(canvas, PainterParams params, int i) {
+  void _drawSingleDay(Canvas canvas, PainterParams params, int i) {
     final candle = params.candles[i];
     final x = i * params.candleWidth;
     final thickWidth = max(params.candleWidth * 0.8, 0.8);
     final thinWidth = max(params.candleWidth * 0.2, 0.2);
+
     // Draw price bar
     final open = candle.open;
     final close = candle.close;
@@ -134,20 +152,23 @@ class ChartPainter extends CustomPainter {
         ..strokeWidth = thinWidth
         ..color = color,
     );
-    // Draw volume bar
+
+    // Draw volume bar within the main chart area
     final volume = candle.volume;
     if (volume != null) {
       canvas.drawLine(
-        Offset(x, params.chartHeight),
+        Offset(x, params.chartMainHeight),
         Offset(x, params.fitVolume(volume)),
         Paint()
           ..strokeWidth = thickWidth
-          ..color = params.style.volumeColor,
+          ..color = candle.change > 0
+              ? params.style.priceGainColor
+              : params.style.priceLossColor,
       );
     }
+
     // Draw trend line
     candle.maLines.forEach((key, value) {
-      // for (int j = 0; j < candle.trends.length; j++) {
       final trendLinePaint = params.style.maStyles[key] ??
           (Paint()
             ..strokeWidth = 2.0
@@ -198,7 +219,7 @@ class ChartPainter extends CustomPainter {
     // Draw highlight bar (selection box)
     canvas.drawLine(
         Offset(i * params.candleWidth, 0.0),
-        Offset(i * params.candleWidth, params.chartHeight),
+        Offset(i * params.candleWidth, params.chartMainHeight),
         Paint()
           ..strokeWidth = max(params.candleWidth * 0.88, 1.0)
           ..color = params.style.selectionHighlightColor);

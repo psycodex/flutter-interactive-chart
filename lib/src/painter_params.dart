@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import 'chart_style.dart';
 import 'entity/candle_data.dart';
+import 'entity/entity.dart';
 
 class PainterParams {
   final List<CandleData> candles;
@@ -10,6 +11,7 @@ class PainterParams {
   final Size size;
   final double candleWidth;
   final double startOffset;
+  final double secondaryHeight = 0.15;
 
   final double maxPrice;
   final double minPrice;
@@ -43,9 +45,15 @@ class PainterParams {
   double get chartHeight => // height without time labels
       size.height - style.timeLabelHeight;
 
-  double get volumeHeight => chartHeight * style.volumeHeightFactor;
+  double get chartMainHeight => // height of main chart area
+      chartHeight * (1 - secondaryHeight);
 
-  double get priceHeight => chartHeight - volumeHeight;
+  double get chartSecondaryHeight => // height of secondary chart area
+      chartHeight * secondaryHeight;
+
+  double get volumeHeight => chartMainHeight * style.volumeHeightFactor;
+
+  double get priceHeight => chartMainHeight - volumeHeight;
 
   int getCandleIndexFromOffset(double x) {
     final adjustedPos = x - xShift + candleWidth / 2;

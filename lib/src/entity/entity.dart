@@ -1,3 +1,4 @@
+import 'package:interactive_chart/src/indicators/indicator.dart';
 import 'package:interactive_chart/src/indicators/indicators.dart';
 
 import 'candle_data.dart';
@@ -14,6 +15,31 @@ class Entity {
   List<CandleData> candles;
 
   List<Indicators> indicators = [];
+  final Map<String, Indicator> indicators1;
 
-  Entity(this.title, this.candles);
+  Entity({
+    required this.title,
+    required this.candles,
+    Map<String, Indicator>? indicators,
+  }) : this.indicators1 = indicators ?? {};
+
+  void addIndicator(String key, Indicator indicator) {
+    indicators1[key] = indicator;
+  }
+
+  void removeIndicator(String key) {
+    indicators1.remove(key);
+  }
+
+  void updateIndicator(String key, Indicator newIndicator) {
+    if (indicators1.containsKey(key)) {
+      indicators1[key] = newIndicator;
+    }
+  }
+
+  List<Indicator> get overlayIndicators =>
+      indicators1.values.where((i) => i.isOverlay).toList();
+
+  List<Indicator> get separateIndicators =>
+      indicators1.values.where((i) => !i.isOverlay).toList();
 }

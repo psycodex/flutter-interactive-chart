@@ -24,7 +24,7 @@ class CandleData {
   final double? volume;
 
   /// The change of the close price from the previous data point.
-  final double? change;
+  final double change;
 
   /// Data holder for additional trend lines, for this data point.
   ///
@@ -47,9 +47,8 @@ class CandleData {
     required this.volume,
     required this.high,
     required this.low,
-    this.change,
     List<double?>? trends,
-  }) : this.maLines = {};
+  }) : this.change = open != 0 ? (close - open) / open * 100 : 0;
 
   static List<double?> computeMA(List<CandleData> data, [int period = 7]) {
     // If data is not at least twice as long as the period, return nulls.

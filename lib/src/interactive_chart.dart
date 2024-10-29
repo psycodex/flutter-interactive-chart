@@ -242,6 +242,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
                 //   child: LeftToolWindow(),
                 // ),
                 Listener(
+                  onPointerHover: (event) => setState(() {
+                    _tapPosition = event.localPosition;
+                  }),
                   onPointerSignal: (signal) {
                     if (signal is PointerScrollEvent) {
                       final dy = signal.scrollDelta.dy;
@@ -255,31 +258,26 @@ class _InteractiveChartState extends State<InteractiveChart> {
                       }
                     }
                   },
-                  child: MouseRegion(
-                    onHover: (details) => setState(() {
+                  child: GestureDetector(
+                    // Tap and hold to view candle details
+                    onTapDown: (details) => setState(() {
                       _tapPosition = details.localPosition;
                     }),
-                    child: GestureDetector(
-                      // Tap and hold to view candle details
-                      onTapDown: (details) => setState(() {
-                        _tapPosition = details.localPosition;
-                      }),
-                      onTapCancel: () => setState(() => _tapPosition = null),
-                      onTapUp: (_) {
-                        // Fire callback event and reset _tapPosition
-                        if (widget.onTap != null) _fireOnTapEvent();
-                        setState(() => _tapPosition = null);
-                      },
-                      // Pan and zoom
-                      onScaleStart: (details) =>
-                          _onScaleStart(details.localFocalPoint),
-                      onScaleUpdate: (details) => _onScaleUpdate(
-                          details.scale, details.localFocalPoint, w),
-                      child: Stack(children: [
-                        child,
-                        _buildDefaultInfo(),
-                      ]),
-                    ),
+                    onTapCancel: () => setState(() => _tapPosition = null),
+                    onTapUp: (_) {
+                      // Fire callback event and reset _tapPosition
+                      if (widget.onTap != null) _fireOnTapEvent();
+                      setState(() => _tapPosition = null);
+                    },
+                    // Pan and zoom
+                    onScaleStart: (details) =>
+                        _onScaleStart(details.localFocalPoint),
+                    onScaleUpdate: (details) => _onScaleUpdate(
+                        details.scale, details.localFocalPoint, w),
+                    child: Stack(children: [
+                      child,
+                      _buildDefaultInfo(),
+                    ]),
                   ),
                 ),
               ],
@@ -400,7 +398,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
           ],
         ),
         closeCallback: () => setState(() {
-          widget.entity.indicators.remove(indicator);
+          widget.entity.indicators1.remove(indicator);
           for (int i = 0; i < widget.entity.candles.length; i++) {
             widget.entity.candles[i].maLines.remove(indicator.length);
           }
@@ -495,15 +493,15 @@ class _InteractiveChartState extends State<InteractiveChart> {
     //     _getMaxStartOffset(w, _candleWidth),
     //   );
     // } else {
-      // Default zoom level. Defaults to a 90 day chart, but configurable.
-      // If data is shorter, we use the whole range.
-      final count = min(
-        widget.entity.candles.length,
-        widget.initialVisibleCandleCount,
-      );
-      _candleWidth = w / count;
-      // Default show the latest available data, e.g. the most recent 90 days.
-      _startOffset = (widget.entity.candles.length - count) * _candleWidth;
+    // Default zoom level. Defaults to a 90 day chart, but configurable.
+    // If data is shorter, we use the whole range.
+    final count = min(
+      widget.entity.candles.length,
+      widget.initialVisibleCandleCount,
+    );
+    _candleWidth = w / count;
+    // Default show the latest available data, e.g. the most recent 90 days.
+    _startOffset = (widget.entity.candles.length - count) * _candleWidth;
     // }
     _prevChartWidth = w;
   }
