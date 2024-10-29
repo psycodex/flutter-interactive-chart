@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:interactive_chart/src/entity/entity.dart';
+import 'package:interactive_chart/src/util/data_util.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -414,11 +415,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
               widget.entity.candles[i].maLines.remove(previousLength);
             }
             indicator.length = length;
-            final ma =
-                CandleData.computeMA(widget.entity.candles, indicator.length);
-            for (int i = 0; i < widget.entity.candles.length; i++) {
-              widget.entity.candles[i].maLines[indicator.length] = ma[i];
-            }
+
+            DataUtil.calculate(widget.entity.candles, [indicator.length]);
             CandleData.forceUpdate = true;
           });
           _savePreferences();
@@ -437,11 +435,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
     setState(() {
       widget.entity.indicators
           .add(Indicators(IndicatorsType.MA, defaultMovingAverage, true));
-      final maDefault =
-          CandleData.computeMA(widget.entity.candles, defaultMovingAverage);
-      for (int i = 0; i < widget.entity.candles.length; i++) {
-        widget.entity.candles[i].maLines[defaultMovingAverage] = maDefault[i];
-      }
+
+      DataUtil.calculate(widget.entity.candles, [defaultMovingAverage]);
     });
     CandleData.forceUpdate = true;
     _savePreferences();
@@ -577,11 +572,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
     });
     setState(() {
       for (Indicators indicator in widget.entity.indicators) {
-        final maDefault =
-            CandleData.computeMA(widget.entity.candles, indicator.length);
-        for (int i = 0; i < widget.entity.candles.length; i++) {
-          widget.entity.candles[i].maLines[indicator.length] = maDefault[i];
-        }
+        DataUtil.calculate(widget.entity.candles, [indicator.length]);
       }
     });
   }

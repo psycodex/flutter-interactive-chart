@@ -1,4 +1,13 @@
-class CandleData {
+import 'package:interactive_chart/src/entity/volume_entity.dart';
+
+import 'cci_entity.dart';
+import 'kdj_entity.dart';
+import 'macd_entity.dart';
+import 'rsi_entity.dart';
+import 'rw_entity.dart';
+
+class CandleData
+    with KDJEntity, RSIEntity, WREntity, CCIEntity, MACDEntity, VolumeEntity {
   /// The timestamp of this data point, in milliseconds since epoch.
   final int timestamp;
 
@@ -38,6 +47,18 @@ class CandleData {
   /// or `clear` methods on the list. Always assign a new list if values
   /// are changed. Otherwise the UI might not be updated.
   Map<int, double?> maLines = {};
+
+//  Upper rail line
+  double? up;
+
+//  Central rail line
+  double? mb;
+
+//  lower rail line
+  double? dn;
+
+  double? BOLLMA;
+
   static bool forceUpdate = false;
 
   CandleData({
@@ -49,27 +70,6 @@ class CandleData {
     required this.low,
     List<double?>? trends,
   }) : this.change = open != 0 ? (close - open) / open * 100 : 0;
-
-  static List<double?> computeMA(List<CandleData> data, [int period = 7]) {
-    // If data is not at least twice as long as the period, return nulls.
-    if (data.length < period * 2) return List.filled(data.length, null);
-
-    final List<double?> result = [];
-    // Skip the first [period] data points. For example, skip 7 data points.
-    final firstPeriod =
-        data.take(period).map((d) => d.close).whereType<double>();
-    double ma = firstPeriod.reduce((a, b) => a + b) / firstPeriod.length;
-    result.addAll(List.filled(period, null));
-
-    // Compute the moving average for the rest of the data points.
-    for (int i = period; i < data.length; i++) {
-      final curr = data[i].close;
-      final prev = data[i - period].close;
-      ma = (ma * period + curr - prev) / period;
-      result.add(ma);
-    }
-    return result;
-  }
 
   @override
   String toString() => "<CandleData ($timestamp: $close)>";
