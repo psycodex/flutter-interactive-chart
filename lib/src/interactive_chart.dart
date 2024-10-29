@@ -484,17 +484,17 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
   _handleResize(double w) {
     if (w == _prevChartWidth && widget.entity.title == previousTitle) return;
-    if (_prevChartWidth != null) {
-      // Re-clamp when size changes (e.g. screen rotation)
-      _candleWidth = _candleWidth.clamp(
-        _getMinCandleWidth(w),
-        _getMaxCandleWidth(w),
-      );
-      _startOffset = _startOffset.clamp(
-        0,
-        _getMaxStartOffset(w, _candleWidth),
-      );
-    } else {
+    // if (false &&_prevChartWidth != null) {
+    //   // Re-clamp when size changes (e.g. screen rotation)
+    //   _candleWidth = _candleWidth.clamp(
+    //     _getMinCandleWidth(w),
+    //     _getMaxCandleWidth(w),
+    //   );
+    //   _startOffset = _startOffset.clamp(
+    //     0,
+    //     _getMaxStartOffset(w, _candleWidth),
+    //   );
+    // } else {
       // Default zoom level. Defaults to a 90 day chart, but configurable.
       // If data is shorter, we use the whole range.
       final count = min(
@@ -504,7 +504,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
       _candleWidth = w / count;
       // Default show the latest available data, e.g. the most recent 90 days.
       _startOffset = (widget.entity.candles.length - count) * _candleWidth;
-    }
+    // }
     _prevChartWidth = w;
   }
 
