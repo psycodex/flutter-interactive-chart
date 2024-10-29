@@ -108,6 +108,8 @@ class _InteractiveChartState extends State<InteractiveChart> {
   double _bottomToolWindowHeight = 30;
   CandleData? _selectedCandle;
   String? previousTitle;
+  TimeUnit defaultTimeUnit = TimeUnit.seconds;
+  Duration durationDiff = Duration.zero;
 
   @override
   void initState() {
@@ -124,6 +126,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
         _handleResize(w);
 
         previousTitle = widget.entity.title;
+        durationDiff = getTimeDifferences(widget.entity.candles);
 
         // Find the visible data range
         final int start = (_startOffset / _candleWidth).floor();
@@ -516,18 +519,15 @@ class _InteractiveChartState extends State<InteractiveChart> {
   }
 
   String defaultTimeLabel(int timestamp, int visibleDataCount) {
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp)
-        .toIso8601String()
-        .split("T")
-        .first
-        .split("-");
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+    final totalDuration = durationDiff * visibleDataCount;
 
-    if (visibleDataCount > 20) {
-      // If more than 20 data points are visible, we should show year and month.
-      return "${date[0]}-${date[1]}"; // yyyy-mm
+    if (totalDuration.inDays >= 365) {
+      return DateFormat.yMMM().format(date);
+    } else if (totalDuration.inDays >= 1) {
+      return DateFormat.MMMd().format(date);
     } else {
-      // Otherwise, we should show month and date.
-      return "${date[1]}-${date[2]}"; // mm-dd
+      return DateFormat.d().format(date);
     }
   }
 
@@ -582,6 +582,36 @@ class _InteractiveChartState extends State<InteractiveChart> {
     final indicatorsString =
         jsonEncode(widget.entity.indicators.map((i) => i.toJson()).toList());
     prefs.setString(KeyIndicators, indicatorsString);
+  }
+
+  Duration getTimeDifferences(List<CandleData> candles) {
+    if (candles.length < 2) return Duration.zero;
+
+    int difference = candles[1].timestamp - candles[0].timestamp;
+    Duration duration = Duration(milliseconds: difference);
+    //
+    // int years = duration.inDays ~/ 365;
+    // int months = (duration.inDays % 365) ~/ 30;
+    // int days = (duration.inDays % 365) % 30;
+    // int hours = duration.inHours % 24;
+    // int minutes = duration.inMinutes % 60;
+    // int seconds = duration.inSeconds % 60;
+    //
+    // if (years > 0) {
+    //   return TimeUnit.years;
+    // } else if (months > 0) {
+    //   return TimeUnit.months;
+    // } else if (days > 0) {
+    //   return TimeUnit.days;
+    // } else if (hours > 0) {
+    //   return TimeUnit.hours;
+    // } else if (minutes > 0) {
+    //   return TimeUnit.minutes;
+    // } else if (seconds > 0) {
+    //   return TimeUnit.seconds;
+    // }
+    // return TimeUnit.seconds,
+    return duration;
   }
 }
 

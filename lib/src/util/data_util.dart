@@ -133,14 +133,16 @@ class DataUtil {
 
     for (int i = 0; i < dataList.length; i++) {
       CandleData entry = dataList[i];
-
-      volumeMa5 += entry.vol;
-      volumeMa10 += entry.vol;
+      if (entry.vol == null) {
+        return;
+      }
+      volumeMa5 += entry.vol!;
+      volumeMa10 += entry.vol!;
 
       if (i == 4) {
         entry.MA5Volume = (volumeMa5 / 5);
       } else if (i > 4) {
-        volumeMa5 -= dataList[i - 5].vol;
+        volumeMa5 -= dataList[i - 5].vol!;
         entry.MA5Volume = volumeMa5 / 5;
       } else {
         entry.MA5Volume = 0;
@@ -149,7 +151,7 @@ class DataUtil {
       if (i == 9) {
         entry.MA10Volume = volumeMa10 / 10;
       } else if (i > 9) {
-        volumeMa10 -= dataList[i - 10].vol;
+        volumeMa10 -= dataList[i - 10].vol!;
         entry.MA10Volume = volumeMa10 / 10;
       } else {
         entry.MA10Volume = 0;

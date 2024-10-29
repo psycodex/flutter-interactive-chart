@@ -24,11 +24,15 @@ class ChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Draw time labels at the bottom
+    _drawTimeLabels(canvas, params);
+
     _drawPriceGridAndLabels(canvas, params);
 
     // Draw prices, volumes & trend line in main chart area
-    canvas.save();
-    canvas.clipRect(Offset.zero & Size(params.chartWidth, params.chartMainHeight));
+    // canvas.save();
+    // canvas.clipRect(
+    //     Offset.zero & Size(params.chartWidth, params.chartMainHeight));
     // canvas.drawRect(
     //   // apply yellow tint to clipped area (for debugging)
     //   Offset.zero & Size(params.chartWidth, params.chartHeight),
@@ -41,14 +45,11 @@ class ChartPainter extends CustomPainter {
     canvas.restore();
 
     // Draw indicator area
-    canvas.save();
-    // canvas.clipRect(indicatorRect);
-    canvas.translate(params.xShift, params.chartMainHeight);
-    _drawIndicator(canvas, params);
-    canvas.restore();
-
-    // Draw time labels at the bottom
-    _drawTimeLabels(canvas, params);
+    // canvas.save();
+    // // canvas.clipRect(indicatorRect);
+    // canvas.translate(params.xShift, params.chartMainHeight);
+    // _drawIndicator(canvas, params);
+    // canvas.restore();
 
     // Draw tap highlight & overlay on top of everything
     if (params.tapPosition != null) {
@@ -56,6 +57,7 @@ class ChartPainter extends CustomPainter {
         _drawTapHighlightAndOverlay(canvas, params);
       }
     }
+    // _drawDebug(canvas, size);
   }
 
   void _drawIndicator(Canvas canvas, PainterParams params) {
@@ -208,6 +210,79 @@ class ChartPainter extends CustomPainter {
         }
       }
     });
+
+    final rsiPaint = (Paint()
+      ..strokeWidth = 1.0
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.red);
+
+    final pt = candle.rsi;
+    final prevPt = params.candles.at(i - 1)?.rsi;
+    if (pt != null && prevPt != null) {
+      // _drawPoint(
+      //     canvas, Offset(x, prevPt + params.chartMainHeight), Colors.red);
+
+      canvas.drawLine(
+        Offset(x, pt + params.chartMainHeight),
+        Offset(x - params.candleWidth, prevPt + params.chartMainHeight),
+        rsiPaint,
+      );
+    }
+  }
+
+  void _drawPoint(Canvas canvas, Offset position, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    // Draw a point as a small circle
+    canvas.drawCircle(position, 5.0, paint);
+  }
+
+  void _drawDebug(Canvas canvas, Size size) {
+    // Draw a bounding box around the entire canvas
+    final boundingBoxPaint = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawRect(Offset.zero & size, boundingBoxPaint);
+
+    // Draw a grid to help with alignment
+    final gridPaint = Paint()
+      ..color = Colors.blue
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+    for (double x = 0; x <= size.width; x += 10) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (double y = 0; y <= size.height; y += 10) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    // Add labels to the corners
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+    final textStyle = TextStyle(fontSize: 10);
+
+    textPainter.text = TextSpan(text: 'Top-Left', style: textStyle);
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(0, 0));
+
+    textPainter.text = TextSpan(text: 'Top-Right', style: textStyle);
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(size.width - textPainter.width, 0));
+
+    textPainter.text = TextSpan(text: 'Bottom-Left', style: textStyle);
+    textPainter.layout();
+    textPainter.paint(canvas, Offset(0, size.height - textPainter.height));
+
+    textPainter.text = TextSpan(text: 'Bottom-Right', style: textStyle);
+    textPainter.layout();
+    textPainter.paint(
+        canvas,
+        Offset(
+            size.width - textPainter.width, size.height - textPainter.height));
   }
 
   void _drawTapHighlightAndOverlay(canvas, PainterParams params) {

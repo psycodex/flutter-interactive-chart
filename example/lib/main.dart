@@ -68,12 +68,12 @@ class _MyAppState extends State<MyApp> {
             volumeHeightFactor: 0.2, // volume area is 20% of total height
           ),
           /** Customize axis labels */
-          timeLabel: (timestamp, visibleDataCount) {
-            final DateTime dateTime =
-                DateTime.fromMillisecondsSinceEpoch(timestamp);
-            final DateFormat formatter = DateFormat('yyyy-MM-dd');
-            return formatter.format(dateTime);
-          },
+          // timeLabel: (timestamp, visibleDataCount) {
+          //   final DateTime dateTime =
+          //       DateTime.fromMillisecondsSinceEpoch(timestamp);
+          //   final DateFormat formatter = DateFormat('yyyy-MM-dd');
+          //   return formatter.format(dateTime);
+          // },
           priceLabel: (price) => "${price.round()}",
           /** Customize overlay (tap and hold to see it)
            ** Or return an empty object to disable overlay info. */
