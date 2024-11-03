@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:interactive_chart/src/entity/info_window_entity.dart';
 
 import 'entity/candle_data.dart';
 import 'painter_params.dart';
@@ -56,6 +57,9 @@ class ChartPainter extends CustomPainter {
       if (params.tapPosition!.dx < params.chartWidth) {
         _drawTapHighlightAndOverlay(canvas, params);
       }
+    } else {
+      // Clear overlay when tap is released
+      params.sink.add(null);
     }
     // _drawDebug(canvas, size);
   }
@@ -128,6 +132,10 @@ class ChartPainter extends CustomPainter {
 
   void _drawSingleDay(Canvas canvas, PainterParams params, int i) {
     final candle = params.candles[i];
+    CandleData? previousCandle;
+    if (i > 0) {
+      previousCandle = params.candles[i - 1];
+    }
     final x = i * params.candleWidth;
     final thickWidth = max(params.candleWidth * 0.8, 0.8);
     final thinWidth = max(params.candleWidth * 0.2, 0.2);
@@ -137,23 +145,37 @@ class ChartPainter extends CustomPainter {
     final close = candle.close;
     final high = candle.high;
     final low = candle.low;
-    final color = open > close
+    Color color = open > close
         ? params.style.priceLossColor
         : params.style.priceGainColor;
-    canvas.drawLine(
-      Offset(x, params.fitPrice(open)),
-      Offset(x, params.fitPrice(close)),
-      Paint()
-        ..strokeWidth = thickWidth
-        ..color = color,
-    );
-    canvas.drawLine(
-      Offset(x, params.fitPrice(high)),
-      Offset(x, params.fitPrice(low)),
-      Paint()
-        ..strokeWidth = thinWidth
-        ..color = color,
-    );
+
+    if (open == close && high == low) {
+      color = open > previousCandle!.open
+          ? params.style.priceGainColor
+          : params.style.priceLossColor;
+      canvas.drawLine(
+        Offset(x - thickWidth / 2, params.fitPrice(open)),
+        Offset(x + thickWidth / 2, params.fitPrice(open)),
+        Paint()
+          ..strokeWidth = 1
+          ..color = color,
+      );
+    } else {
+      canvas.drawLine(
+        Offset(x, params.fitPrice(open)),
+        Offset(x, params.fitPrice(close)),
+        Paint()
+          ..strokeWidth = thickWidth
+          ..color = color,
+      );
+      canvas.drawLine(
+        Offset(x, params.fitPrice(high)),
+        Offset(x, params.fitPrice(low)),
+        Paint()
+          ..strokeWidth = thinWidth
+          ..color = color,
+      );
+    }
 
     // Draw volume bar within the main chart area
     final volume = candle.volume;
@@ -219,9 +241,6 @@ class ChartPainter extends CustomPainter {
     final pt = candle.rsi;
     final prevPt = params.candles.at(i - 1)?.rsi;
     if (pt != null && prevPt != null) {
-      // _drawPoint(
-      //     canvas, Offset(x, prevPt + params.chartMainHeight), Colors.red);
-
       canvas.drawLine(
         Offset(x, pt + params.chartMainHeight),
         Offset(x - params.candleWidth, prevPt + params.chartMainHeight),
@@ -289,21 +308,36 @@ class ChartPainter extends CustomPainter {
     final pos = params.tapPosition!;
     final i = params.getCandleIndexFromOffset(pos.dx);
     final candle = params.candles[i];
+    CandleData? previousCandle;
+    if (i > 0) {
+      previousCandle = params.candles[i - 1];
+    }
+    params.sink.add(InfoWindowEntity(
+      candle: candle,
+      previousCandle: previousCandle,
+    ));
     canvas.save();
     canvas.translate(params.xShift, 0.0);
     // Draw highlight bar (selection box)
     canvas.drawLine(
         Offset(i * params.candleWidth, 0.0),
-        Offset(i * params.candleWidth, params.chartMainHeight),
+        Offset(i * params.candleWidth, params.chartHeight),
         Paint()
-          ..strokeWidth = max(params.candleWidth * 0.88, 1.0)
+          ..strokeWidth = 1
+          ..color = params.style.selectionHighlightColor);
+    canvas.drawLine(
+        Offset(0.0, params.fitPrice(candle.close)),
+        Offset(params.chartWidth, params.fitPrice(candle.close)),
+        Paint()
+          ..strokeWidth = 1
           ..color = params.style.selectionHighlightColor);
     canvas.restore();
     // Draw info pane
-    _drawTapInfoOverlay(canvas, params, candle);
+    _drawTapInfoOverlay(canvas, params, candle, i);
   }
 
-  void _drawTapInfoOverlay(canvas, PainterParams params, CandleData candle) {
+  void _drawTapInfoOverlay(
+      canvas, PainterParams params, CandleData candle, int index) {
     final xGap = 8.0;
     final yGap = 4.0;
 
@@ -318,6 +352,7 @@ class ChartPainter extends CustomPainter {
 
     final info = getOverlayInfo(candle);
     if (info.isEmpty) return;
+    return;
     final labels = info.keys.map((text) => makeTP(text)).toList();
     final values = info.values.map((text) => makeTP(text)).toList();
 

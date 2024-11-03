@@ -38,21 +38,21 @@ class DataUtil {
   }
 
   static calcMA(List<CandleData> dataList, List<int> maDayList) {
-    List<double> ma = List<double>.filled(maDayList.length, 0);
+    Map<int, double?> ma = {for (var day in maDayList) day: 0.0};
 
     if (dataList.isNotEmpty) {
       for (int i = 0; i < dataList.length; i++) {
         CandleData entity = dataList[i];
         final closePrice = entity.close;
-        for (int j = 0; j < maDayList.length; j++) {
-          ma[j] += closePrice;
-          if (i == maDayList[j] - 1) {
-            entity.maLines[j] = ma[j] / maDayList[j];
-          } else if (i >= maDayList[j]) {
-            ma[j] -= dataList[i - maDayList[j]].close;
-            entity.maLines[j] = ma[j] / maDayList[j];
+        for (int day in maDayList) {
+          ma[day] = ma[day]! + closePrice;
+          if (i == day - 1) {
+            entity.maLines[day] = ma[day]! / day;
+          } else if (i >= day) {
+            ma[day] = ma[day]! - dataList[i - day].close;
+            entity.maLines[day] = ma[day]! / day;
           } else {
-            entity.maLines[j] = 0;
+            entity.maLines[day] = 0;
           }
         }
       }

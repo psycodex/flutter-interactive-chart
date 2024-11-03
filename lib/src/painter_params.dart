@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/widgets.dart';
 
 import 'chart_style.dart';
 import 'entity/candle_data.dart';
-import 'entity/entity.dart';
+import 'entity/info_window_entity.dart';
 
 class PainterParams {
   final List<CandleData> candles;
@@ -22,6 +23,7 @@ class PainterParams {
   final Offset? tapPosition;
   final Map<int, double?>? leadingTrends;
   final Map<int, double?>? trailingTrends;
+  StreamSink<InfoWindowEntity?> sink;
 
   PainterParams({
     required this.candles,
@@ -37,6 +39,7 @@ class PainterParams {
     required this.tapPosition,
     required this.leadingTrends,
     required this.trailingTrends,
+    required this.sink,
   });
 
   double get chartWidth => // width without price labels
@@ -105,6 +108,7 @@ class PainterParams {
       tapPosition: b.tapPosition,
       leadingTrends: b.leadingTrends,
       trailingTrends: b.trailingTrends,
+      sink: b.sink,
     );
   }
 
