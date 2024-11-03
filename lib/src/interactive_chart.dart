@@ -245,43 +245,53 @@ class _InteractiveChartState extends State<InteractiveChart> {
                 //   ),
                 //   child: LeftToolWindow(),
                 // ),
-                Listener(
-                  onPointerHover: (event) => setState(() {
+                MouseRegion(
+                  onHover: (event) => setState(() {
                     _tapPosition = event.localPosition;
                   }),
-                  onPointerSignal: (signal) {
-                    if (signal is PointerScrollEvent) {
-                      final dy = signal.scrollDelta.dy;
-                      if (dy.abs() > 0) {
-                        _onScaleStart(signal.position);
-                        _onScaleUpdate(
-                          dy > 0 ? 0.9 : 1.1,
-                          signal.position,
-                          w,
-                        );
-                      }
-                    }
-                  },
-                  child: GestureDetector(
-                    // Tap and hold to view candle details
-                    onTapDown: (details) => setState(() {
-                      _tapPosition = details.localPosition;
+                  onExit: (event) => setState(() {
+                    _tapPosition = null;
+                  }),
+                  child: Listener(
+                    onPointerCancel: (event) => setState(() {
+                      _tapPosition = null;
                     }),
-                    onTapCancel: () => setState(() => _tapPosition = null),
-                    onTapUp: (_) {
-                      // Fire callback event and reset _tapPosition
-                      if (widget.onTap != null) _fireOnTapEvent();
-                      setState(() => _tapPosition = null);
+                    onPointerSignal: (signal) {
+                      if (signal is PointerScrollEvent) {
+                        final dy = signal.scrollDelta.dy;
+                        if (dy.abs() > 0) {
+                          _onScaleStart(signal.position);
+                          _onScaleUpdate(
+                            dy > 0 ? 0.9 : 1.1,
+                            signal.position,
+                            w,
+                          );
+                        }
+                      } else {
+                        print("different signal");
+                      }
                     },
-                    // Pan and zoom
-                    onScaleStart: (details) =>
-                        _onScaleStart(details.localFocalPoint),
-                    onScaleUpdate: (details) => _onScaleUpdate(
-                        details.scale, details.localFocalPoint, w),
-                    child: Stack(children: [
-                      child,
-                      _buildDefaultInfo(),
-                    ]),
+                    child: GestureDetector(
+                      // Tap and hold to view candle details
+                      onTapDown: (details) => setState(() {
+                        _tapPosition = details.localPosition;
+                      }),
+                      onTapCancel: () => setState(() => _tapPosition = null),
+                      onTapUp: (_) {
+                        // Fire callback event and reset _tapPosition
+                        if (widget.onTap != null) _fireOnTapEvent();
+                        setState(() => _tapPosition = null);
+                      },
+                      // Pan and zoom
+                      onScaleStart: (details) =>
+                          _onScaleStart(details.localFocalPoint),
+                      onScaleUpdate: (details) => _onScaleUpdate(
+                          details.scale, details.localFocalPoint, w),
+                      child: Stack(children: [
+                        child,
+                        _buildDefaultInfo(),
+                      ]),
+                    ),
                   ),
                 ),
               ],
