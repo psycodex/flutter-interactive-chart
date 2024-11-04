@@ -66,10 +66,13 @@ class InteractiveChart extends StatefulWidget {
   ///
   /// This provides the width of a candlestick at the current zoom level.
   final ValueChanged<double>? onCandleResize;
+  final Function(String) onTimeFrameSelected;
+  final String minimumTimeframe;
 
   InteractiveChart({
     Key? key,
     required this.entity,
+    required this.onTimeFrameSelected,
     this.initialVisibleCandleCount = 90,
     ChartStyle? style,
     this.timeLabel,
@@ -77,6 +80,7 @@ class InteractiveChart extends StatefulWidget {
     this.overlayInfo,
     this.onTap,
     this.onCandleResize,
+    this.minimumTimeframe = "1 day",
   })  : this.style = style ?? const ChartStyle(),
         assert(entity.candles.length >= 3,
             "InteractiveChart requires 3 or more CandleData"),
@@ -242,7 +246,12 @@ class _InteractiveChartState extends State<InteractiveChart> {
                       BorderSide(color: dividerColor, width: windowBorderSize),
                 ),
               ),
-              child: TopToolWindow(onIndicatorSelected: _onIndicatorSelected),
+              child: TopToolWindow(
+                title: widget.entity.title,
+                onIndicatorSelected: _onIndicatorSelected,
+                onTimeFrameSelected: widget.onTimeFrameSelected,
+                minimumTimeframe: widget.minimumTimeframe,
+              ),
             ),
             Row(
               children: [
@@ -278,8 +287,6 @@ class _InteractiveChartState extends State<InteractiveChart> {
                             w,
                           );
                         }
-                      } else {
-                        print("different signal");
                       }
                     },
                     child: GestureDetector(
@@ -595,8 +602,6 @@ class _InteractiveChartState extends State<InteractiveChart> {
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      // indicators = [];
-      // _savePreferences();
       final indicatorsString = prefs.getString(KeyIndicators);
       if (indicatorsString != null) {
         final List<dynamic> jsonList = jsonDecode(indicatorsString);

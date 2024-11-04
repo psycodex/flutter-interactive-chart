@@ -23,21 +23,21 @@ class RoundedIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var colorScheme = Theme.of(context).colorScheme;
+    // var colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: EdgeInsets.all(1.0), // Adjust padding as needed
       // width: size,
       // height: size,
       decoration: background
           ? BoxDecoration(
-              color: colorScheme.onPrimary,
+              // color: colorScheme.onPrimary,
               borderRadius: BorderRadius.circular(borderRadius))
           : null,
       margin: margin,
       child: IconButton(
         icon: Icon(
           icon,
-          color: colorScheme.primary,
+          // color: colorScheme.primary,
           size: size,
         ),
         onPressed: onPressed,

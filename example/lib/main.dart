@@ -75,6 +75,9 @@ class _MyAppState extends State<MyApp> {
           //   return formatter.format(dateTime);
           // },
           priceLabel: (price) => "${price.round()}",
+          onTimeFrameSelected: (String timeFrame) {
+            print(timeFrame);
+          },
           /** Customize overlay (tap and hold to see it)
            ** Or return an empty object to disable overlay info. */
           // overlayInfo: (candle) => {
