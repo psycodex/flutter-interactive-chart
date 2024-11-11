@@ -81,11 +81,12 @@ class InteractiveChart extends StatefulWidget {
     this.onTap,
     this.onCandleResize,
     this.minimumTimeframe = "1 day",
-  })  : this.style = style ?? const ChartStyle(),
+  })
+      : this.style = style ?? const ChartStyle(),
         assert(entity.candles.length >= 3,
-            "InteractiveChart requires 3 or more CandleData"),
+        "InteractiveChart requires 3 or more CandleData"),
         assert(initialVisibleCandleCount >= 3,
-            "initialVisibleCandleCount must be more 3 or more"),
+        "initialVisibleCandleCount must be more 3 or more"),
         super(key: key);
 
   @override
@@ -114,15 +115,19 @@ class _InteractiveChartState extends State<InteractiveChart> {
   double _bottomToolWindowHeight = 30;
 
   String? previousTitle;
+  String? previousTimeFrame;
   TimeUnit defaultTimeUnit = TimeUnit.seconds;
   Duration durationDiff = Duration.zero;
   final StreamController<InfoWindowEntity?> mInfoWindowStream =
-      StreamController<InfoWindowEntity?>();
+  StreamController<InfoWindowEntity?>();
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    if (widget.entity.timeFrame == null) {
+      widget.entity.timeFrame = widget.minimumTimeframe;
+    }
   }
 
   @override
@@ -136,17 +141,24 @@ class _InteractiveChartState extends State<InteractiveChart> {
         final size = constraints.biggest;
         final w = size.width - widget.style.priceLabelWidth;
         _handleResize(w);
-
+        print(
+            "time frame: ${widget.entity
+                .timeFrame}, previous time frame: $previousTimeFrame");
+        if (widget.entity.timeFrame == null) {
+          print("null");
+        }
         previousTitle = widget.entity.title;
+        previousTimeFrame = widget.entity.timeFrame;
+
         durationDiff = getTimeDifferences(widget.entity.candles);
 
         // Find the visible data range
         final int start = (_startOffset / _candleWidth).floor();
         final int count = (w / _candleWidth).ceil();
         final int end =
-            (start + count).clamp(start, widget.entity.candles.length);
+        (start + count).clamp(start, widget.entity.candles.length);
         final candlesInRange =
-            widget.entity.candles.getRange(start, end).toList();
+        widget.entity.candles.getRange(start, end).toList();
         if (end < widget.entity.candles.length) {
           // Put in an extra item, since it can become visible when scrolling
           final nextItem = widget.entity.candles[end];
@@ -155,8 +167,12 @@ class _InteractiveChartState extends State<InteractiveChart> {
 
         // If possible, find neighbouring trend line data,
         // so the chart could draw better-connected lines
-        final leadingTrends = widget.entity.candles.at(start - 1)?.maLines;
-        final trailingTrends = widget.entity.candles.at(end + 1)?.maLines;
+        final leadingTrends = widget.entity.candles
+            .at(start - 1)
+            ?.maLines;
+        final trailingTrends = widget.entity.candles
+            .at(end + 1)
+            ?.maLines;
 
         // Find the horizontal shift needed when drawing the candles.
         // First, always shift the chart by half a candle, because when we
@@ -177,9 +193,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
         }
 
         final maxPrice =
-            candlesInRange.map(highest).whereType<double>().reduce(max);
+        candlesInRange.map(highest).whereType<double>().reduce(max);
         final minPrice =
-            candlesInRange.map(lowest).whereType<double>().reduce(min);
+        candlesInRange.map(lowest).whereType<double>().reduce(min);
         final maxVol = candlesInRange
             .map((c) => c.volume)
             .whereType<double>()
@@ -233,7 +249,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
           },
         );
 
-        Color dividerColor = Theme.of(context).dividerColor;
+        Color dividerColor = Theme
+            .of(context)
+            .dividerColor;
         const double windowBorderSize = 1;
         return Column(
           children: [
@@ -243,13 +261,22 @@ class _InteractiveChartState extends State<InteractiveChart> {
               decoration: BoxDecoration(
                 border: Border(
                   bottom:
-                      BorderSide(color: dividerColor, width: windowBorderSize),
+                  BorderSide(color: dividerColor, width: windowBorderSize),
                 ),
               ),
               child: TopToolWindow(
                 title: widget.entity.title,
                 onIndicatorSelected: _onIndicatorSelected,
-                onTimeFrameSelected: widget.onTimeFrameSelected,
+                onTimeFrameSelected: (timeFrame) {
+                  print(
+                      "time frame changed to $timeFrame, previous time frame: ${widget
+                          .entity.timeFrame}");
+                  // setState(() {
+                  // previousTimeFrame = widget.entity.timeFrame;
+                  widget.entity.timeFrame = timeFrame;
+                  widget.onTimeFrameSelected(timeFrame);
+                  // });
+                },
                 minimumTimeframe: widget.minimumTimeframe,
               ),
             ),
@@ -266,16 +293,19 @@ class _InteractiveChartState extends State<InteractiveChart> {
                 //   child: LeftToolWindow(),
                 // ),
                 MouseRegion(
-                  onHover: (event) => setState(() {
-                    _tapPosition = event.localPosition;
-                  }),
-                  onExit: (event) => setState(() {
-                    _tapPosition = null;
-                  }),
+                  onHover: (event) =>
+                      setState(() {
+                        _tapPosition = event.localPosition;
+                      }),
+                  onExit: (event) =>
+                      setState(() {
+                        _tapPosition = null;
+                      }),
                   child: Listener(
-                    onPointerCancel: (event) => setState(() {
-                      _tapPosition = null;
-                    }),
+                    onPointerCancel: (event) =>
+                        setState(() {
+                          _tapPosition = null;
+                        }),
                     onPointerSignal: (signal) {
                       if (signal is PointerScrollEvent) {
                         final dy = signal.scrollDelta.dy;
@@ -291,9 +321,10 @@ class _InteractiveChartState extends State<InteractiveChart> {
                     },
                     child: GestureDetector(
                       // Tap and hold to view candle details
-                      onTapDown: (details) => setState(() {
-                        _tapPosition = details.localPosition;
-                      }),
+                      onTapDown: (details) =>
+                          setState(() {
+                            _tapPosition = details.localPosition;
+                          }),
                       onTapCancel: () => setState(() => _tapPosition = null),
                       onTapUp: (_) {
                         // Fire callback event and reset _tapPosition
@@ -303,8 +334,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
                       // Pan and zoom
                       onScaleStart: (details) =>
                           _onScaleStart(details.localFocalPoint),
-                      onScaleUpdate: (details) => _onScaleUpdate(
-                          details.scale, details.localFocalPoint, w),
+                      onScaleUpdate: (details) =>
+                          _onScaleUpdate(
+                              details.scale, details.localFocalPoint, w),
                       child: Stack(children: [
                         child,
                         _buildDefaultInfo(),
@@ -350,7 +382,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
             candle = widget.entity.candles[widget.entity.candles.length - 1];
             if (widget.entity.candles.length - 2 > 0) {
               previousCandle =
-                  widget.entity.candles[widget.entity.candles.length - 2];
+              widget.entity.candles[widget.entity.candles.length - 2];
             }
           }
           double change = candle.close - candle.open;
@@ -431,7 +463,10 @@ class _InteractiveChartState extends State<InteractiveChart> {
   List<Widget> _buildSecondaryInfo(CandleData? entity) {
     return widget.entity.indicators.map((indicator) {
       return InfoWidget(
-        title: indicator.indicatorType.toString().split('.').last +
+        title: indicator.indicatorType
+            .toString()
+            .split('.')
+            .last +
             " " +
             indicator.length.toString() +
             ": ",
@@ -445,14 +480,15 @@ class _InteractiveChartState extends State<InteractiveChart> {
             ),
           ],
         ),
-        closeCallback: () => setState(() {
-          widget.entity.indicators1.remove(indicator);
-          for (int i = 0; i < widget.entity.candles.length; i++) {
-            widget.entity.candles[i].maLines.remove(indicator.length);
-          }
-          CandleData.forceUpdate = true;
-          _savePreferences();
-        }),
+        closeCallback: () =>
+            setState(() {
+              widget.entity.indicators1.remove(indicator);
+              for (int i = 0; i < widget.entity.candles.length; i++) {
+                widget.entity.candles[i].maLines.remove(indicator.length);
+              }
+              CandleData.forceUpdate = true;
+              _savePreferences();
+            }),
         saveCallback: (int length, int? previousLength) {
           if (length == previousLength) {
             return;
@@ -523,7 +559,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
   }
 
   _handleResize(double w) {
-    if (w == _prevChartWidth && widget.entity.title == previousTitle) return;
+    if (w == _prevChartWidth &&
+        widget.entity.title == previousTitle &&
+        widget.entity.timeFrame == previousTimeFrame) return;
     // if (false &&_prevChartWidth != null) {
     //   // Re-clamp when size changes (e.g. screen rotation)
     //   _candleWidth = _candleWidth.clamp(
@@ -621,7 +659,7 @@ class _InteractiveChartState extends State<InteractiveChart> {
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final indicatorsString =
-        jsonEncode(widget.entity.indicators.map((i) => i.toJson()).toList());
+    jsonEncode(widget.entity.indicators.map((i) => i.toJson()).toList());
     prefs.setString(KeyIndicators, indicatorsString);
   }
 

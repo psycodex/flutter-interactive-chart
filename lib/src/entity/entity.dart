@@ -5,6 +5,7 @@ import 'candle_data.dart';
 
 class Entity {
   String title;
+  String? timeFrame;
 
   /// The full list of [CandleData] to be used for this chart.
   ///
@@ -20,6 +21,7 @@ class Entity {
   Entity({
     required this.title,
     required this.candles,
+    this.timeFrame,
     Map<String, Indicator>? indicators,
   }) : this.indicators1 = indicators ?? {};
 
