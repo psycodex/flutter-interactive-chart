@@ -37,7 +37,7 @@ class _MyAppState extends State<MyApp> {
         ),
         body: InteractiveChart(
           entity: Entity(
-            title: "Tesla Inc. (TSLA)",
+            title: "",
             candles: _data,
           ),
           style: ChartStyle(

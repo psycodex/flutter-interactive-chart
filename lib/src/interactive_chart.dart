@@ -141,12 +141,12 @@ class _InteractiveChartState extends State<InteractiveChart> {
         final size = constraints.biggest;
         final w = size.width - widget.style.priceLabelWidth;
         _handleResize(w);
-        print(
-            "time frame: ${widget.entity
-                .timeFrame}, previous time frame: $previousTimeFrame");
-        if (widget.entity.timeFrame == null) {
-          print("null");
-        }
+        // print(
+        //     "time frame: ${widget.entity
+        //         .timeFrame}, previous time frame: $previousTimeFrame");
+        // if (widget.entity.timeFrame == null) {
+        //   print("null");
+        // }
         previousTitle = widget.entity.title;
         previousTimeFrame = widget.entity.timeFrame;
 
@@ -268,9 +268,9 @@ class _InteractiveChartState extends State<InteractiveChart> {
                 title: widget.entity.title,
                 onIndicatorSelected: _onIndicatorSelected,
                 onTimeFrameSelected: (timeFrame) {
-                  print(
-                      "time frame changed to $timeFrame, previous time frame: ${widget
-                          .entity.timeFrame}");
+                  // print(
+                  //     "time frame changed to $timeFrame, previous time frame: ${widget
+                  //         .entity.timeFrame}");
                   // setState(() {
                   // previousTimeFrame = widget.entity.timeFrame;
                   widget.entity.timeFrame = timeFrame;
